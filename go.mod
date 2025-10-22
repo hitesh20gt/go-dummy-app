@@ -1,4 +1,4 @@
-module go-clean-app
+module go-dummy-app
 
 go 1.23.0
 

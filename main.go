@@ -1,14 +1,18 @@
 package main
 
 import (
-	controllers "go-clean-app/controller"
-	mongoConnection "go-clean-app/database"
+	controllers "go-dummy-app/controller"
+	mongoConnection "go-dummy-app/database"
+	producer "go-dummy-app/kafka"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	mongoConnection.ConnectMongo()
+
+	producer.Produce()
+
 	r := gin.Default()
 
 	// Route to get dummy user

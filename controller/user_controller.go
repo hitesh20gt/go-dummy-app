@@ -2,8 +2,8 @@ package controller
 
 import (
 	"context"
-	"go-clean-app/database"
-	"go-clean-app/models"
+	"go-dummy-app/database"
+	"go-dummy-app/models"
 	"net/http"
 	"time"
 
