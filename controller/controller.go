@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/mongo"
+
+	kafkaConnection "go-dummy-app/kafka"
 )
 
 func CreateAndStoreDummyUser(c *gin.Context) {
 	dummyUser := models.User{
-		ID:    "1",
+		ID:    uuid.New().String(),
 		Name:  "John Doe",
 		Email: "john.doe@example.com",
 	}
@@ -28,6 +31,8 @@ func CreateAndStoreDummyUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert user"})
 		return
 	}
+
+	kafkaConnection.Produce()
 
 	c.JSON(http.StatusOK, dummyUser)
 }

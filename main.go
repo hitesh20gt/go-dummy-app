@@ -3,7 +3,7 @@ package main
 import (
 	controllers "go-dummy-app/controller"
 	mongoConnection "go-dummy-app/database"
-	producer "go-dummy-app/kafka"
+	kafkaConnection "go-dummy-app/kafka"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,7 +11,7 @@ import (
 func main() {
 	mongoConnection.ConnectMongo()
 
-	producer.Produce()
+	go kafkaConnection.Consume()
 
 	r := gin.Default()
 
