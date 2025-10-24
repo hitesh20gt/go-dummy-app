@@ -17,6 +17,7 @@ func main() {
 
 	// Route to get dummy user
 	r.GET("/user", controllers.CreateAndStoreDummyUser)
+	r.POST("/earmark", controllers.CreateEarmark)
 	r.GET("/users", controllers.GetAllUsers)
 
 	r.Run() // default port is :8080
