@@ -1,0 +1,33 @@
+name: Count Lines of Code
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  count-loc:
+    name: Count Lines of Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cloc
+        run: sudo apt-get install -y cloc
+
+      - name: Count lines of code
+        run: |
+          echo "📊 Counting lines of code..."
+          cloc --exclude-dir=node_modules,dist,build,.git --vcs=git
+
+      - name: Save LOC report
+        run: |
+          cloc --json --exclude-dir=node_modules,dist,build,.git --vcs=git > loc-report.json
+
+      - name: Upload LOC report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: loc-report
+          path: loc-report.json
