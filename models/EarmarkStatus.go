@@ -3,6 +3,7 @@ package models
 import "math/big"
 
 type EarmarkStatus struct {
+	ID               string     `bson:"_id,omitempty" json:"id"`
 	EarmarkAmount    string     `bson:"earmarkAmount" json:"earmarkAmount"`
 	EarmarkCurrency  string     `bson:"earmarkCurrency" json:"earmarkCurrency"`
 	DebitAccount     *big.Float `bson:"debitAccount" json:"debitAccount"`

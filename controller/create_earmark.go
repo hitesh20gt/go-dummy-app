@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"context"
@@ -9,10 +10,12 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	models "go-dummy-app/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
 )
 
@@ -35,7 +38,7 @@ func CreateEarmark(c *gin.Context) {
 
 	copier.Copy(&resp, &req)
 
-	existingEarmarks := fetchExistingEarmark(c)
+	existingEarmarks := fetchExistingEarmark(c, req.EarmarkReference)
 
 	if req.RequestType == "CREATE" {
 		if existingEarmarks != nil {
@@ -46,6 +49,7 @@ func CreateEarmark(c *gin.Context) {
 			var earmarkStatus models.EarmarkStatus
 			copier.Copy(&earmarkStatus, &req)
 			earmarkStatus.Status = "ACTIVE"
+			earmarkStatus.ID = uuid.NewString()
 
 			var earmarkStatusCollection *mongo.Collection = database.Client.Database("testdb").Collection("earmark_status")
 
@@ -55,6 +59,9 @@ func CreateEarmark(c *gin.Context) {
 			_, err := earmarkStatusCollection.InsertOne(ctx, earmarkStatus)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert user"})
+				resp.ResponseCode = "0007"
+				resp.ResponseMessage = "Intenal server error"
+				resp.ResponseStatus = "F"
 				return
 			}
 
@@ -63,17 +70,49 @@ func CreateEarmark(c *gin.Context) {
 			resp.ResponseStatus = "S"
 		}
 	} else {
-		existingEarmarks[0].Status = "CLOSED"
-		resp.ResponseCode = "0008"
-		resp.ResponseMessage = "Earmark Released successfully"
-		resp.ResponseStatus = "S"
+		found, ok := Find(existingEarmarks, func(n models.EarmarkStatus) bool {
+			return n.Status == "ACTIVE"
+		})
+		if ok {
+			fmt.Println("Found:", found)
+			found.Status = "CLOSED"
+			var earmarkStatusCollection *mongo.Collection = database.Client.Database("testdb").Collection("earmark_status")
+
+			filter := bson.M{"_id": found.ID}
+			update := bson.M{"$set": found}
+
+			opts := options.Update().SetUpsert(true)
+
+			result, err := earmarkStatusCollection.UpdateOne(context.TODO(), filter, update, opts)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert user"})
+				resp.ResponseCode = "0007"
+				resp.ResponseMessage = "Intenal server error"
+				resp.ResponseStatus = "F"
+				return
+			}
+			if result.UpsertedCount > 0 {
+				fmt.Println("✅ New document inserted with ID:", result.UpsertedID)
+			} else {
+				fmt.Println("✅ Existing document updated")
+			}
+			resp.ResponseCode = "0008"
+			resp.ResponseMessage = "Earmark Released successfully"
+			resp.ResponseStatus = "S"
+		} else {
+			fmt.Println("No match found")
+			resp.ResponseCode = "0001"
+			resp.ResponseMessage = "Earmark doesnt exists"
+			resp.ResponseStatus = "F"
+		}
 	}
 
 	// Send JSON response
 	c.JSON(http.StatusOK, resp)
 }
 
-func fetchExistingEarmark(c *gin.Context) []models.EarmarkStatus {
+func fetchExistingEarmark(c *gin.Context, ermrkRef string) []models.EarmarkStatus {
 	// Get the collection
 	earmarkStatusCollection := database.Client.Database("testdb").Collection("earmark_status")
 
@@ -82,7 +121,8 @@ func fetchExistingEarmark(c *gin.Context) []models.EarmarkStatus {
 	defer cancel()
 
 	// MongoDB query to get all documents
-	cursor, err := earmarkStatusCollection.Find(ctx, bson.M{})
+	filter := bson.M{"earmarkReference": ermrkRef}
+	cursor, err := earmarkStatusCollection.Find(ctx, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return []models.EarmarkStatus{}
@@ -102,4 +142,15 @@ func fetchExistingEarmark(c *gin.Context) []models.EarmarkStatus {
 	}
 
 	return existingEarmarks
+}
+
+// Generic-style function (for Go 1.18+)
+func Find[T any](arr []T, condition func(T) bool) (T, bool) {
+	for _, v := range arr {
+		if condition(v) {
+			return v, true
+		}
+	}
+	var zero T
+	return zero, false
 }
